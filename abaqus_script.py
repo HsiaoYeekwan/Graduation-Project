@@ -213,9 +213,7 @@ def StepSetting(TimePeriod , numIntervals , Speed):
     #create step 
     mdb.models['Model-1'].ExplicitDynamicsStep(name='Step-1', previous='Initial', 
         timePeriod=TimePeriod)
-    #fieldoutput setting
-    mdb.models['Model-1'].fieldOutputRequests['F-Output-1'].setValues(
-        numIntervals=numIntervals)
+    
     #create contact property
     mdb.models['Model-1'].ContactProperty('IntProp-1')
     mdb.models['Model-1'].interactionProperties['IntProp-1'].TangentialBehavior(
@@ -260,14 +258,15 @@ def StepSetting(TimePeriod , numIntervals , Speed):
         localCsys=None, u1=ON, u2=ON, u3=ON, ur1=ON, ur2=ON, ur3=ON)
     #create boundary conditions
     a = mdb.models['Model-1'].rootAssembly
-    c1 = a.instances['Part-3-1'].cells
+    faces = a.instances['Part-3-1'].faces
+    face = faces.findAt((( 0,0,-(100 + D/2) ),))
     
-    cells1 = c1.findAt(((0.0,0.0,-(D/2+100)),))
-    region = a.Set(cells=cells1, name='Set-2')
-    mdb.models['Model-1'].DisplacementBC(name='BC-1', createStepName='Initial', 
-        region=region, u1=SET, u2=SET, u3=SET, ur1=SET, ur2=SET, ur3=SET, 
-        amplitude=UNSET, distributionType=UNIFORM, fieldName='', localCsys=None)
-
+    region = a.Set(faces=face, name='Set-8')
+    mdb.models['Model-1'].DisplacementBC(name='BC-3', createStepName='Initial', 
+    region=region, u1=SET, u2=SET, u3=SET, ur1=SET, ur2=SET, ur3=SET, 
+    amplitude=UNSET, distributionType=UNIFORM, fieldName='', localCsys=None)
+    
+    
     a = mdb.models['Model-1'].rootAssembly
     r1 = a.referencePoints
     refPoints1 = r1.findAt((0.0,0.0,0.0))
@@ -298,20 +297,46 @@ def StepSetting(TimePeriod , numIntervals , Speed):
     refPoints1 = r.findAt((0.0,0.0,0.0))
     refPoints1 = (refPoints1,)
     
-    
-    
     region = a.Set(referencePoints=refPoints1, name='Set-6')
     mdb.models['Model-1'].ConcentratedForce(name='Load-2', createStepName='Step-1', 
-        region=region, cf3=-1000.0, amplitude='Amp-1', distributionType=UNIFORM, 
+        region=region, cf3=-10000.0, amplitude='Amp-1', distributionType=UNIFORM, 
         field='', localCsys=None)
-def Run(JobName):
+        
+    #output setting
+    a.ReferencePoint(point=(0.0,0.0,D/2))
+    r = a.referencePoints
+   
+    rp2 = r.findAt((0.0,0.0,D/2))
+    rp2 = (rp2,)
+    
+    region2=a.Set(referencePoints=rp2, name='m_Set-2')
+    
+    s1 = a.instances['Part-3-1'].faces
+    side1Faces1 = s1.findAt(((0.0,0.0,-D/2),))
+    outer_surface=a.Surface(side1Faces=side1Faces1, name='outer_surface')
+    
+    mdb.models['Model-1'].Coupling(name='Constraint-3', controlPoint=region2, 
+        surface=outer_surface, influenceRadius=WHOLE_SURFACE, couplingType=KINEMATIC, 
+        localCsys=None,u1=OFF, u2=OFF, u3=OFF, ur1=OFF, ur2=OFF, ur3=OFF)
+        
+    mdb.models['Model-1'].fieldOutputRequests['F-Output-1'].setValues(variables=(
+        'U', 'V', 'A'), region=MODEL, exteriorOnly=OFF, sectionPoints=DEFAULT, 
+        rebar=EXCLUDE,numIntervals=numIntervals)
+    regionDef=mdb.models['Model-1'].rootAssembly.sets['m_Set-2']
+    mdb.models['Model-1'].historyOutputRequests['H-Output-1'].setValues(variables=(
+        'U1', 'U2', 'U3', 'UR1', 'UR2', 'UR3', 'UT', 'UR', 'UCOM1', 'UCOM2', 
+        'UCOM3', 'V1', 'V2', 'V3', 'VR1', 'VR2', 'VR3', 'VT', 'VR', 'VCOM1', 
+        'VCOM2', 'VCOM3', 'A1', 'A2', 'A3', 'AR1', 'AR2', 'AR3', 'AT', 'AR', 
+        'ACOM1', 'ACOM2', 'ACOM3', 'RBANG', 'RBROT'), region=regionDef, 
+        sectionPoints=DEFAULT, rebar=EXCLUDE,numIntervals=numIntervals)
+def Run(JobName,number_of_cpus):
     mdb.Job(name=JobName, model='Model-1', description='', type=ANALYSIS, 
         atTime=None, waitMinutes=0, waitHours=0, queue=None, memory=90, 
         memoryUnits=PERCENTAGE, explicitPrecision=SINGLE, 
         nodalOutputPrecision=SINGLE, echoPrint=OFF, modelPrint=OFF, 
         contactPrint=OFF, historyPrint=OFF, userSubroutine='', scratch='', 
-        resultsFormat=ODB, parallelizationMethodExplicit=DOMAIN, numDomains=1, 
-        activateLoadBalancing=False, multiprocessingMode=DEFAULT, numCpus=1)
+        resultsFormat=ODB, parallelizationMethodExplicit=DOMAIN, numDomains=number_of_cpus, 
+        activateLoadBalancing=False, multiprocessingMode=DEFAULT, numCpus=number_of_cpus)
     mdb.jobs[JobName].submit(consistencyChecking=OFF)
 if __name__ == '__main__':
     CreateBearingShell()
@@ -320,6 +345,6 @@ if __name__ == '__main__':
     AssignSections()
     GetMash(1.5,0.5,3.0)
     Assembly(9)
-    StepSetting(0.01 , 1000 , 314)
-    Run('job-testscript')
+    StepSetting(0.01 , 200 , 314)
+    Run('job-testscript',4)
     
