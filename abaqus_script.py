@@ -18,8 +18,8 @@ H1 = H2 = W + 1
 def CreateBearingShell():
     #create a new sketch class
     s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
-    sheetSize=1000.0)
-    g, v, c = s.geometry, s.vertices, s.constraints
+        sheetSize=1000.0)
+    g = s.geometry
     #necessary
     s.setPrimaryObject(option=STANDALONE)
     s.ConstructionLine(point1=(0.0, -500.0), point2=(0.0, 500.0))
@@ -58,7 +58,8 @@ def CreateBearingShell():
     s.PerpendicularConstraint(entity1=g[12], entity2=g[14], addUndoState=False)
     s.copyMirror(mirrorLine=g[14], objectList=(g[3], g[4], g[7], g[8], g[10], 
     g[11], g[12], g[13]))
-    s.autoTrimCurve(curve1=g[14], point1=(15.5, 0.0))
+   
+    s.autoTrimCurve(curve1=g[14], point1=((D+d)/4, 0.0))
     
     p = mdb.models['Model-1'].Part(name='Part-1', dimensionality=THREE_D, 
     type=DEFORMABLE_BODY)
@@ -67,22 +68,23 @@ def CreateBearingShell():
     s.unsetPrimaryObject()
     p = mdb.models['Model-1'].parts['Part-1']
     del mdb.models['Model-1'].sketches['__profile__']
+    
 def CreateBearingBall():
-    s1 = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
-    sheetSize=1000.0)
-    g, v, c = s1.geometry, s1.vertices, s1.constraints
-    s1.setPrimaryObject(option=STANDALONE)
-    s1.ConstructionLine(point1=(0.0, -500.0), point2=(0.0, 500.0))
-    s1.FixedConstraint(entity=g[2])
-    s1.Arc3Points(point1=(0.0, R), point2=(0.0, -R), point3=(R, 0.0))
-    s1.Line(point1=(0.0, R), point2=(0.0, -R))
-    s1.VerticalConstraint(entity=g[4], addUndoState=False)
-    s1.PerpendicularConstraint(entity1=g[3], entity2=g[4], addUndoState=False)
+    s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
+        sheetSize=1000.0)
+    g = s.geometry
+    s.setPrimaryObject(option=STANDALONE)
+    s.ConstructionLine(point1=(0.0, -500.0), point2=(0.0, 500.0))
+    s.FixedConstraint(entity=g[2])
+    s.Arc3Points(point1=(0.0, R), point2=(0.0, -R), point3=(R, 0.0))
+    s.Line(point1=(0.0, R), point2=(0.0, -R))
+    s.VerticalConstraint(entity=g[4], addUndoState=False)
+    s.PerpendicularConstraint(entity1=g[3], entity2=g[4], addUndoState=False)
     p = mdb.models['Model-1'].Part(name='Part-2', dimensionality=THREE_D, 
         type=DEFORMABLE_BODY)
     p = mdb.models['Model-1'].parts['Part-2']
-    p.BaseSolidRevolve(sketch=s1, angle=360.0, flipRevolveDirection=OFF)
-    s1.unsetPrimaryObject()
+    p.BaseSolidRevolve(sketch=s, angle=360.0, flipRevolveDirection=OFF)
+    s.unsetPrimaryObject()
     p = mdb.models['Model-1'].parts['Part-2']
     del mdb.models['Model-1'].sketches['__profile__']
     #cut the ball
@@ -90,8 +92,6 @@ def CreateBearingBall():
     p.DatumPlaneByPrincipalPlane(principalPlane=XYPLANE, offset=0.0)
     p.DatumPlaneByPrincipalPlane(principalPlane=XZPLANE, offset=0.0)
     p.DatumPlaneByPrincipalPlane(principalPlane=YZPLANE, offset=0.0)
-
-    p = mdb.models['Model-1'].parts['Part-2']
     datums = p.datums
     c = p.cells
     p.PartitionCellByDatumPlane(datumPlane=datums[4], cells=c)
@@ -99,6 +99,58 @@ def CreateBearingBall():
     p.PartitionCellByDatumPlane(datumPlane=datums[2], cells=c)
     c = p.cells
     p.PartitionCellByDatumPlane(datumPlane=datums[3], cells=c)
+
+def CreateHolding(number_of_balls):
+    s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
+    sheetSize=200.0)
+    g = s.geometry
+    s.setPrimaryObject(option=STANDALONE)
+    s.ConstructionLine(point1=(0.0, -100.0), point2=(0.0, 100.0))
+    s.FixedConstraint(entity=g[2])
+    s.Line(point1=((D+d)/4-1, B/2), point2=((D+d)/4+1, B/2))
+    s.HorizontalConstraint(entity=g[3], addUndoState=False)
+    s.Line(point1=((D+d)/4+1, B/2), point2=((D+d)/4+1, -B/2))
+    s.VerticalConstraint(entity=g[4], addUndoState=False)
+    s.PerpendicularConstraint(entity1=g[3], entity2=g[4], addUndoState=False)
+    s.Line(point1=((D+d)/4+1, -B/2), point2=((D+d)/4-1, -B/2))
+    s.HorizontalConstraint(entity=g[5], addUndoState=False)
+    s.PerpendicularConstraint(entity1=g[4], entity2=g[5], addUndoState=False)
+    s.Line(point1=((D+d)/4-1, -B/2), point2=((D+d)/4-1, B/2))
+    s.VerticalConstraint(entity=g[6], addUndoState=False)
+    s.PerpendicularConstraint(entity1=g[5], entity2=g[6], addUndoState=False)
+    p = mdb.models['Model-1'].Part(name='Part-4', dimensionality=THREE_D, 
+        type=DEFORMABLE_BODY)
+    p = mdb.models['Model-1'].parts['Part-4']
+    p.BaseSolidRevolve(sketch=s, angle=360.0, flipRevolveDirection=OFF)
+    s.unsetPrimaryObject()
+    del mdb.models['Model-1'].sketches['__profile__']
+
+    a1 = mdb.models['Model-1'].rootAssembly
+    p = mdb.models['Model-1'].parts['Part-2']
+    a1.Instance(name='Part-2-1', part=p, dependent=ON)
+    p = mdb.models['Model-1'].parts['Part-4']
+    a1.Instance(name='Part-4-1', part=p, dependent=ON)
+    
+    a1.translate(instanceList=('Part-2-1', ), vector=(0.0, 0.0, (D+d)/4))
+    a1.RadialInstancePattern(instanceList=('Part-2-1', ), point=(0.0, 0.0, 0.0), 
+        axis=(0.0, 1.0, 0.0), number=number_of_balls, totalAngle=360.0)
+    cutinstance = [mdb.models['Model-1'].rootAssembly.instances['Part-2-1']]
+    prename = 'Part-2-1-rad-'
+    
+    for i in range(number_of_balls-1):
+        name = prename + str(i+2)
+        a = mdb.models['Model-1'].rootAssembly
+        part = a.instances[name]
+        cutinstance.append(part)
+    a1.InstanceFromBooleanCut(name='Part-5', 
+        instanceToBeCut=mdb.models['Model-1'].rootAssembly.instances['Part-4-1'], 
+        cuttingInstances=cutinstance, originalInstances=SUPPRESS)
+
+    p = mdb.models['Model-1'].parts['Part-5']
+    p.DatumPlaneByPrincipalPlane(principalPlane=XYPLANE, offset=0.0)
+    datums = p.datums
+    c = p.cells
+    p.PartitionCellByDatumPlane(datumPlane=datums[2], cells=c)
 
 def CreateSupport():
     s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
@@ -139,23 +191,7 @@ def CreateSupport():
     s.unsetPrimaryObject()
     del mdb.models['Model-1'].sketches['__profile__']
     
-def Assembly(number_of_balls):
-    a = mdb.models['Model-1'].rootAssembly
-    a.DatumCsysByDefault(CARTESIAN)
-    p = mdb.models['Model-1'].parts['Part-1']
-    a.Instance(name='Part-1-1', part=p, dependent=ON)
-    p = mdb.models['Model-1'].parts['Part-2']
-    a.Instance(name='Part-2-1', part=p, dependent=ON)
-    a.translate(instanceList=('Part-2-1', ), vector=(d/2+W+R, 0.0, 0.0))
-    a.RadialInstancePattern(instanceList=('Part-2-1', ), point=(0.0, 0.0, 0.0), 
-        axis=(0.0, 1.0, 0.0), number=number_of_balls, totalAngle=360.0)
-    p = mdb.models['Model-1'].parts['Part-3']
-    a.Instance(name='Part-3-1', part=p, dependent=ON)
-    a.translate(instanceList=('Part-3-1', ), vector=(0.0, -(100+D/2), 0.0))
-    a.rotate(instanceList=('Part-3-1', ), axisPoint=(0.0, 0.0, 0.0), 
-        axisDirection=(1.0, 0.0, 0.0), angle=90.0)
-    a.translate(instanceList=('Part-3-1', ), vector=(0.0, B, 0.0))
-    
+
 def AssignSections():
     #create materials 
     mdb.models['Model-1'].Material(name='Material-bearing')
@@ -195,6 +231,14 @@ def AssignSections():
     p.SectionAssignment(region=region, sectionName='Section-support', offset=0.0, 
         offsetType=MIDDLE_SURFACE, offsetField='', 
         thicknessAssignment=FROM_SECTION)
+    
+    p = mdb.models['Model-1'].parts['Part-5']
+    c = p.cells
+    region = p.Set(cells=c, name='Set-1')
+    p.SectionAssignment(region=region, sectionName='Section-bearing', offset=0.0, 
+        offsetType=MIDDLE_SURFACE, offsetField='', 
+        thicknessAssignment=FROM_SECTION)
+
 def GetMash(Shell_Size , Ball_Size , Support_Size):
     #to generate the mash
     p = mdb.models['Model-1'].parts['Part-1']
@@ -208,12 +252,39 @@ def GetMash(Shell_Size , Ball_Size , Support_Size):
     p = mdb.models['Model-1'].parts['Part-3']
     p.seedPart(size=Support_Size, deviationFactor=0.1, minSizeFactor=0.1)
     p.generateMesh()
+
+    p = mdb.models['Model-1'].parts['Part-5']
+    p.seedPart(size=Shell_Size, deviationFactor=0.1, minSizeFactor=0.1)
+    p.generateMesh()
     
+def Assembly(number_of_balls):
+    a = mdb.models['Model-1'].rootAssembly
+    features = ['Part-2-1', 'Part-4-1']
+    for i in range(number_of_balls-1):
+        name = 'Part-2-1-rad-' + str(i+2)
+        features.append(name)
+    
+    a.deleteFeatures(features)
+
+    a = mdb.models['Model-1'].rootAssembly
+    a.DatumCsysByDefault(CARTESIAN)
+    p = mdb.models['Model-1'].parts['Part-1']
+    a.Instance(name='Part-1-1', part=p, dependent=ON)
+    p = mdb.models['Model-1'].parts['Part-2']
+    a.Instance(name='Part-2-1', part=p, dependent=ON)
+    a.translate(instanceList=('Part-2-1', ), vector=(d/2+W+R, 0.0, 0.0))
+    a.RadialInstancePattern(instanceList=('Part-2-1', ), point=(0.0, 0.0, 0.0), 
+        axis=(0.0, 1.0, 0.0), number=number_of_balls, totalAngle=360.0)
+    p = mdb.models['Model-1'].parts['Part-3']
+    a.Instance(name='Part-3-1', part=p, dependent=ON)
+    a.translate(instanceList=('Part-3-1', ), vector=(0.0, -(100+D/2), 0.0))
+    a.rotate(instanceList=('Part-3-1', ), axisPoint=(0.0, 0.0, 0.0), 
+        axisDirection=(1.0, 0.0, 0.0), angle=90.0)
+    a.translate(instanceList=('Part-3-1', ), vector=(0.0, B, 0.0))
 def StepSetting(TimePeriod , numIntervals , Speed):
     #create step 
     mdb.models['Model-1'].ExplicitDynamicsStep(name='Step-1', previous='Initial', 
         timePeriod=TimePeriod)
-    
     #create contact property
     mdb.models['Model-1'].ContactProperty('IntProp-1')
     mdb.models['Model-1'].interactionProperties['IntProp-1'].TangentialBehavior(
@@ -233,6 +304,33 @@ def StepSetting(TimePeriod , numIntervals , Speed):
     #add reference point
     a = mdb.models['Model-1'].rootAssembly
     a.ReferencePoint(point=(0.0, 0.0, 0.0))
+    a.ReferencePoint(point=(0.0, 0.0, D/2))
+    #output settings
+    r = a.referencePoints
+    rp2 = r.findAt((0.0,0.0,D/2))
+    rp2 = (rp2,)
+    region2=a.Set(referencePoints=rp2, name='m_Set-2')
+    s1 = a.instances['Part-3-1'].faces
+    side1Faces1 = s1.findAt(((0.0,0.0,-D/2),))
+    outer_surface=a.Surface(side1Faces=side1Faces1, name='outer_surface')
+    mdb.models['Model-1'].Coupling(name='Constraint-3', controlPoint=region2, 
+        surface=outer_surface, influenceRadius=WHOLE_SURFACE, couplingType=KINEMATIC, 
+        localCsys=None,u1=OFF, u2=OFF, u3=OFF, ur1=OFF, ur2=OFF, ur3=OFF)
+    
+    mdb.models['Model-1'].fieldOutputRequests['F-Output-1'].setValues(variables=(
+        'U', 'V', 'A'), region=MODEL, exteriorOnly=OFF, sectionPoints=DEFAULT, 
+        rebar=EXCLUDE,numIntervals=numIntervals)
+    regionDef=mdb.models['Model-1'].rootAssembly.sets['m_Set-2']
+    mdb.models['Model-1'].historyOutputRequests['H-Output-1'].setValues(variables=(
+        'U1', 'U2', 'U3', 'UR1', 'UR2', 'UR3', 
+        'A1', 'A2', 'A3', 'AR1', 'AR2', 'AR3'), region=regionDef, 
+        sectionPoints=DEFAULT, rebar=EXCLUDE,numIntervals=numIntervals)
+    # mdb.models['Model-1'].historyOutputRequests['H-Output-1'].setValues(variables=(
+    #     'U1', 'U2', 'U3', 'UR1', 'UR2', 'UR3', 'UT', 'UR', 'UCOM1', 'UCOM2', 
+    #     'UCOM3', 'V1', 'V2', 'V3', 'VR1', 'VR2', 'VR3', 'VT', 'VR', 'VCOM1', 
+    #     'VCOM2', 'VCOM3', 'A1', 'A2', 'A3', 'AR1', 'AR2', 'AR3', 'AT', 'AR', 
+    #     'ACOM1', 'ACOM2', 'ACOM3', 'RBANG', 'RBROT'), region=regionDef, 
+    #     sectionPoints=DEFAULT, rebar=EXCLUDE,numIntervals=numIntervals)
     #yueshu binding and couping
     s1 = a.instances['Part-3-1'].faces
     side1Faces1 = s1.findAt(((0.0,0.0,D/2),))
@@ -302,33 +400,7 @@ def StepSetting(TimePeriod , numIntervals , Speed):
         region=region, cf3=-10000.0, amplitude='Amp-1', distributionType=UNIFORM, 
         field='', localCsys=None)
         
-    #output setting
-    a.ReferencePoint(point=(0.0,0.0,D/2))
-    r = a.referencePoints
-   
-    rp2 = r.findAt((0.0,0.0,D/2))
-    rp2 = (rp2,)
     
-    region2=a.Set(referencePoints=rp2, name='m_Set-2')
-    
-    s1 = a.instances['Part-3-1'].faces
-    side1Faces1 = s1.findAt(((0.0,0.0,-D/2),))
-    outer_surface=a.Surface(side1Faces=side1Faces1, name='outer_surface')
-    
-    mdb.models['Model-1'].Coupling(name='Constraint-3', controlPoint=region2, 
-        surface=outer_surface, influenceRadius=WHOLE_SURFACE, couplingType=KINEMATIC, 
-        localCsys=None,u1=OFF, u2=OFF, u3=OFF, ur1=OFF, ur2=OFF, ur3=OFF)
-        
-    mdb.models['Model-1'].fieldOutputRequests['F-Output-1'].setValues(variables=(
-        'U', 'V', 'A'), region=MODEL, exteriorOnly=OFF, sectionPoints=DEFAULT, 
-        rebar=EXCLUDE,numIntervals=numIntervals)
-    regionDef=mdb.models['Model-1'].rootAssembly.sets['m_Set-2']
-    mdb.models['Model-1'].historyOutputRequests['H-Output-1'].setValues(variables=(
-        'U1', 'U2', 'U3', 'UR1', 'UR2', 'UR3', 'UT', 'UR', 'UCOM1', 'UCOM2', 
-        'UCOM3', 'V1', 'V2', 'V3', 'VR1', 'VR2', 'VR3', 'VT', 'VR', 'VCOM1', 
-        'VCOM2', 'VCOM3', 'A1', 'A2', 'A3', 'AR1', 'AR2', 'AR3', 'AT', 'AR', 
-        'ACOM1', 'ACOM2', 'ACOM3', 'RBANG', 'RBROT'), region=regionDef, 
-        sectionPoints=DEFAULT, rebar=EXCLUDE,numIntervals=numIntervals)
 def Run(JobName,number_of_cpus):
     mdb.Job(name=JobName, model='Model-1', description='', type=ANALYSIS, 
         atTime=None, waitMinutes=0, waitHours=0, queue=None, memory=90, 
@@ -342,9 +414,10 @@ if __name__ == '__main__':
     CreateBearingShell()
     CreateBearingBall()
     CreateSupport()
+    CreateHolding(9)
     AssignSections()
     GetMash(1.5,0.5,3.0)
     Assembly(9)
-    StepSetting(0.01 , 200 , 314)
-    Run('job-testscript',4)
-    
+    StepSetting(0.01 , 200 , 157)
+    Run('job-small_withhoding',8)
+     

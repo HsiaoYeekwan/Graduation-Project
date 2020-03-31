@@ -99,6 +99,57 @@ def CreateBearingBall():
     p.PartitionCellByDatumPlane(datumPlane=datums[2], cells=c)
     c = p.cells
     p.PartitionCellByDatumPlane(datumPlane=datums[3], cells=c)
+def CreateHolding(number_of_balls):
+    s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
+        sheetSize=200.0)
+    g = s.geometry
+    s.setPrimaryObject(option=STANDALONE)
+    s.ConstructionLine(point1=(0.0, -100.0), point2=(0.0, 100.0))
+    s.FixedConstraint(entity=g[2])
+    s.Line(point1=((D+d)/4-1, B/2), point2=((D+d)/4+1, B/2))
+    s.HorizontalConstraint(entity=g[3], addUndoState=False)
+    s.Line(point1=((D+d)/4+1, B/2), point2=((D+d)/4+1, -B/2))
+    s.VerticalConstraint(entity=g[4], addUndoState=False)
+    s.PerpendicularConstraint(entity1=g[3], entity2=g[4], addUndoState=False)
+    s.Line(point1=((D+d)/4+1, -B/2), point2=((D+d)/4-1, -B/2))
+    s.HorizontalConstraint(entity=g[5], addUndoState=False)
+    s.PerpendicularConstraint(entity1=g[4], entity2=g[5], addUndoState=False)
+    s.Line(point1=((D+d)/4-1, -B/2), point2=((D+d)/4-1, B/2))
+    s.VerticalConstraint(entity=g[6], addUndoState=False)
+    s.PerpendicularConstraint(entity1=g[5], entity2=g[6], addUndoState=False)
+    p = mdb.models['Model-1'].Part(name='Part-holding', dimensionality=THREE_D, 
+        type=DEFORMABLE_BODY)
+    p = mdb.models['Model-1'].parts['Part-holding']
+    p.BaseSolidRevolve(sketch=s, angle=360.0, flipRevolveDirection=OFF)
+    s.unsetPrimaryObject()
+    del mdb.models['Model-1'].sketches['__profile__']
+
+    a1 = mdb.models['Model-1'].rootAssembly
+    p = mdb.models['Model-1'].parts['Part-2']
+    a1.Instance(name='Part-2-1', part=p, dependent=ON)
+    p = mdb.models['Model-1'].parts['Part-holding']
+    a1.Instance(name='Part-holding-1', part=p, dependent=ON)
+    
+    a1.translate(instanceList=('Part-2-1', ), vector=(0.0, 0.0, (D+d)/4))
+    a1.RadialInstancePattern(instanceList=('Part-2-1', ), point=(0.0, 0.0, 0.0), 
+        axis=(0.0, 1.0, 0.0), number=number_of_balls, totalAngle=360.0)
+    cutinstance = [mdb.models['Model-1'].rootAssembly.instances['Part-2-1']]
+    prename = 'Part-2-1-rad-'
+    
+    for i in range(number_of_balls-1):
+        name = prename + str(i+2)
+        a = mdb.models['Model-1'].rootAssembly
+        part = a.instances[name]
+        cutinstance.append(part)
+    a1.InstanceFromBooleanCut(name='Part-hold', 
+        instanceToBeCut=mdb.models['Model-1'].rootAssembly.instances['Part-holding-1'], 
+        cuttingInstances=cutinstance, originalInstances=SUPPRESS)
+
+    p = mdb.models['Model-1'].parts['Part-hold']
+    p.DatumPlaneByPrincipalPlane(principalPlane=XYPLANE, offset=0.0)
+    datums = p.datums
+    c = p.cells
+    p.PartitionCellByDatumPlane(datumPlane=datums[2], cells=c)
 
 def CreateSupport():
     s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
@@ -174,6 +225,13 @@ def AddMalfunction(length , depth):
     
 def Assembly(number_of_balls):
     a = mdb.models['Model-1'].rootAssembly
+    features = ['Part-holding-1','Part-2-1', 'Part-4-1','Part-1-1', 'Part-4-1']
+    for i in range(number_of_balls-1):
+        name = 'Part-2-1-rad-' + str(i+2)
+        features.append(name)
+    a.deleteFeatures(features)
+
+    a = mdb.models['Model-1'].rootAssembly
     a.DatumCsysByDefault(CARTESIAN)
     
     p = mdb.models['Model-1'].parts['Part-2']
@@ -187,7 +245,6 @@ def Assembly(number_of_balls):
     a.rotate(instanceList=('Part-3-1', ), axisPoint=(0.0, 0.0, 0.0), 
         axisDirection=(1.0, 0.0, 0.0), angle=90.0)
     a.translate(instanceList=('Part-3-1', ), vector=(0.0, B, 0.0))
-    a.deleteFeatures(('Part-1-1', 'Part-4-1', ))
     
 def AssignSections():
     #create materials 
@@ -242,6 +299,13 @@ def AssignSections():
     p.SectionAssignment(region=region, sectionName='Section-bearing', offset=0.0, 
         offsetType=MIDDLE_SURFACE, offsetField='', 
         thicknessAssignment=FROM_SECTION)
+    
+    p = mdb.models['Model-1'].parts['Part-hold']
+    c = p.cells
+    region = p.Set(cells=c, name='Set-1')
+    p.SectionAssignment(region=region, sectionName='Section-bearing', offset=0.0, 
+        offsetType=MIDDLE_SURFACE, offsetField='', 
+        thicknessAssignment=FROM_SECTION)
 def GetMash(Shell_Size , Ball_Size , Support_Size):
     #to generate the mash
     p = mdb.models['Model-1'].parts['Part-1']
@@ -266,6 +330,10 @@ def GetMash(Shell_Size , Ball_Size , Support_Size):
     p = mdb.models['Model-1'].parts['Part-5']
     p.seedPart(size=Shell_Size, deviationFactor=0.1, minSizeFactor=0.1)
     p.generateMesh(meshTechniqueOverride=ON)
+
+    p = mdb.models['Model-1'].parts['Part-hold']
+    p.seedPart(size=Shell_Size, deviationFactor=0.1, minSizeFactor=0.1)
+    p.generateMesh()
 
 def StepSetting(TimePeriod , numIntervals , Speed):
     #create step 
@@ -403,9 +471,10 @@ if __name__ == '__main__':
     CreateBearingBall()
     CreateSupport()
     AddMalfunction(2.0,2.0)
+    CreateHolding(9)
     AssignSections()
     GetMash(1.5,0.5,3.0)
     Assembly(9)
-    StepSetting(0.01 , 200 , 314)
-    Run('job-testmalfunction2' , 4)
+    StepSetting(0.01 , 200 , 157)
+    Run('job-small_with_holding_and_malfunction' , 8)
     
